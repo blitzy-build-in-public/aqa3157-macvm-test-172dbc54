@@ -133,7 +133,10 @@ prove:
 The migration is like-for-like: no re-architecting, no feature change, no service substitution beyond the
 mapped pair and no cost-driven redesign. Where the target cannot reproduce a source behaviour exactly — an idle
 timeout, a cache default, an edge-function capability, a collation — the difference is recorded as a finding
-with a decision. It is not licence to redesign the website.
+with a decision. It is not licence to redesign the website. Where the target's configuration model differs
+rather than only its defaults, the configuration is rebuilt and re-tested on the target instead of ported: the
+CDN configuration, its cache policies and any edge code are rebuilt and re-tested against the source's observed
+behaviour before cutover (TA-8).
 
 ### 1.6 What this plan requires of the migration programme
 
@@ -339,7 +342,7 @@ and no other section or table in this document restates it.
 
 **Entry criteria.**
 
-- The hypercare exit criteria are met and signed off by the application owner and the platform owner.
+- The hypercare exit criteria are met and signed off by the Application Owner and the Cloud Platform Engineer.
 
 **Exit criteria.**
 
@@ -432,7 +435,8 @@ allow-lists and callback URLs which change with the new target egress addresses 
 **Example checks.** Identity provider assertion and callback; payment authorisation and confirmation in the
 provider's test mode; outbound email sending and bounce handling; webhook receipt and signature; analytics event
 ingestion; a retired source-address allow-list entry tested to confirm removal; an old callback URL tested to
-confirm it is no longer registered.
+confirm it is no longer registered; the storage hostname a third party calls back to (an upload callback or a
+signed-URL redirect) resolves to the target and presents a certificate matching that name.
 
 **Pass threshold.** 100% of integration endpoints reachable and functional from the target; zero provider
 rejections attributable to a source address; 100% of callback, webhook and redirect registrations verified
@@ -463,7 +467,7 @@ error-rate breach; sustained resource saturation below `[Max sustained utilisati
 `[Max scaling events]` during the spike window, so the service returns to a stable footprint rather than
 oscillating.
 
-**Owner.** Performance Engineer, with the SRE.
+**Owner.** Performance Engineer, with the SRE / Observability Engineer.
 
 ### 3.5 TA-5 Security
 
@@ -512,7 +516,7 @@ data loss beyond `[RPO target]`; measured RTO and RPO at or below those targets 
 manual intervention required in the failover path; error rate during failover never sustained above
 `[Failover error tolerance]` for longer than the failover itself.
 
-**Owner.** SRE, with the Data Engineer for database and restore tests.
+**Owner.** SRE / Observability Engineer, with the Data Engineer for database and restore tests.
 
 ### 3.7 TA-7 Observability
 
@@ -533,7 +537,7 @@ reads are populated; request correlation or tracing available for a sample end-t
 test; 100% routed to a monitored destination within `[Alert delivery target]`; retention explicitly set on every
 log destination; 100% of the go/no-go dashboard panels populated during the rehearsal.
 
-**Owner.** SRE, with the Observability Engineer.
+**Owner.** SRE / Observability Engineer.
 
 ### 3.8 TA-8 DNS, TLS and CDN
 
@@ -543,19 +547,43 @@ change, at every traffic step.
 **Method.** DNS inspection before, during and after each weight change, including resolution probes from
 multiple public resolvers; per-host certificate validation; cache behaviour tests for hit, miss and stale
 content; redirect and canonical checks against the source rule set captured in P1; `robots.txt` and sitemap
-validation.
+validation; the CDN configuration, its cache policies and any edge code treated as rebuilding work rather than a
+port and re-tested against the source's observed behaviour; cache-key composition, managed default TTL values,
+cache-policy defaults and invalidation quotas compared with the source's observed values; the region a
+certificate attached to a CDN distribution is issued in is checked against the regions that distribution
+accepts; the DNS validation record left in place after issuance and confirmed still present, so renewal
+continues; the object-storage addressing style in use, virtual-hosted or path-style, recorded and checked, with a
+bucket name containing a dot matched by the certificate presented for that name; the signed-URL signing scope and
+the credential-limited paths inside the target's model; and object-storage consistency judged against the
+documented exceptions, because retry-until-visible assertions are obsolete.
 
 **Example checks.** TTL lowered ahead of the window with the previous TTL observed to have expired; each weight
 change fully reflected within the propagation window; certificate chain, expiry and subject-alternative-name
 coverage per host; HTTP-to-HTTPS and canonical-host redirects; self-referential canonical tags; sitemap
 reachable, well formed and referenced from `robots.txt`; `robots.txt` unchanged in effect; static asset caching
-and content versioning; no mixed content and no certificate-name mismatch on any host.
+and content versioning; no mixed content and no certificate-name mismatch on any host; cache-key composition
+compared input for input with the source's (query string, headers, cookies, path and compression); managed
+default TTL values, cache-policy defaults and the invalidation quota each compared with the source's; the
+rebuilt CDN configuration, cache policies and any edge code re-tested before cutover; the storage addressing
+style in use recorded and consistent across every storage host; a bucket name containing a dot matched by its
+certificate's subject-alternative-name coverage; the signed-URL signing scope and the credential-limited paths
+inside the target's model; and object-storage consistency judged against the documented exceptions rather than
+retried until visible; each certificate attached to a CDN distribution issued in the region that distribution
+accepts; the DNS validation record left in place at issuance and still present so renewal continues.
 
 **Pass threshold.** 100% of certificate checks pass with at least `[Min certificate validity]` remaining and
 full hostname coverage; redirect and canonical rules match the source rule for rule; `robots.txt` and the
 sitemap reachable with a success status and no accidental disallow; zero stale-content defects after an
 invalidation or version change; each weight change fully effective within `[TTL propagation window]` at every
-step.
+step; 100% of the cache-key inputs the source uses reproduced by the target's cache policy, with the managed
+default TTL values, the cache-policy defaults and the invalidation quota each compared against the source and
+every difference recorded as a finding with a decision; zero CDN or edge-code configurations accepted as a port,
+each rebuilt configuration passing its re-test against the source's observed behaviour before the first traffic
+step; 100% of storage hosts answering on the addressing style recorded in the plan, with a bucket name
+containing a dot matched by its certificate; zero signed-URL requests rejected for signing scope or
+credential-limited paths; zero reliance on retry-until-visible behaviour; every certificate attached to a CDN
+distribution issued in the region that distribution accepts (`[CDN certificate region]`); every DNS validation
+record still in place at the final traffic step, so renewal continues.
 
 **Owner.** Cloud Platform Engineer, with the Application Owner for the SEO-critical content checks.
 
@@ -583,7 +611,7 @@ loss across the reconciled writes, with the reconciled record count equal to the
 each rehearsal; 100% of critical journeys pass on the source after the reversal; the rollback decision is
 reached inside `[Decision timebox]` from the moment a trigger condition is observed.
 
-**Owner.** Cutover Manager, with the SRE and the Data Engineer.
+**Owner.** Cutover Manager, with the SRE / Observability Engineer and the Data Engineer.
 
 ### 3.10 States every test area must handle
 
@@ -619,7 +647,7 @@ agreement.
 | Cached DNS resolvers ignoring the lowered TTL | The TTL is lowered well before the window and the shift waits out the previous TTL. The source stays healthy for late-resolving clients, resolution is probed from multiple public resolvers, and the monitoring window is sized to the observed convergence rather than the planned one. Rollback does not depend on instant resolver convergence, so the way back stays reachable for at least the propagation window after a reversal. |
 | Data written to both environments at once during the parallel run | One write path is designated authoritative and the other environment receives that change, or dual writes are reconciled by a named rule. The chosen mechanism is named and proven before P3 exits: the reconciliation report that proves it is produced and signed off by the Data Engineer, as the recorded evidence for the P3 exit criterion that the consistency mechanism is named and proven (2.3); conflicts are resolved by `[Conflict resolution rule]` with a named owner; and the reconciled record count must equal the dual-written record count. |
 | Time-zone, character-encoding and collation differences between the source and target databases | Time-zone setting, character set and collation are compared explicitly for every database; the tests spot-check non-ASCII and multi-byte content, case sensitivity of lookups, sort order, and date and time rendering across a daylight-saving boundary and a time-zone offset. Any difference beyond the documented accepted list is treated as a data-integrity defect, not a cosmetic one. |
-| Large uploads, signed URLs and CORS rules that depend on the storage domain | Signed-URL generation and consumption are tested from the target with lifetimes inside the provider's limit and after a key rotation; the largest supported upload is attempted end to end; CORS preflight and the origin allow-list are verified against the target storage hostname. A failure here halts the traffic step until it is fixed, because it is a failure of TA-3 as well as TA-8. |
+| Large uploads, signed URLs and CORS rules that depend on the storage domain | Signed-URL generation and consumption are tested from the target with lifetimes inside the provider's limit and after a key rotation; both environments cap a signed URL at seven days, so the differences that matter are the signing scope and the credential-limited paths inside the target's model; the largest supported upload is attempted end to end; CORS preflight and the origin allow-list are verified against the target storage hostname; the addressing style in use — virtual-hosted or path-style — is recorded and verified, and a bucket name containing a dot must be matched by the certificate presented for that name; object reads, writes and listings are judged against the target's documented consistency exceptions rather than retried until visible. A failure here halts the traffic step until it is fixed, because it is a failure of TA-3 as well as TA-8. |
 | Scheduled jobs that run twice, or not at all, during the switch | One environment owns each schedule and the other environment's schedules are disabled for the window; job-run logs are compared to prove every job ran exactly once per schedule with no missed run; any job with an external side effect is checked for idempotency; a duplicate or missed run is treated as a functional defect at the cutover gate. |
 
 ## 4. Cutover and hypercare testing
@@ -653,6 +681,7 @@ every threshold advances; a step that breaches a threshold is handled by section
 a rollback trigger reverses the step.
 
 - **Cutover mechanics.** The weight mechanics, the TTL preparation and the mixed-traffic behaviour the steps rely on are stated once in 1.2 and are not restated here.
+- **Certificate preparation.** Every certificate presented at a traffic step covers every hostname it serves with at least `[Min certificate validity]` remaining; a certificate attached to a CDN distribution is issued in the region that distribution accepts (`[CDN certificate region]`); and every DNS validation record is left in place at issuance, so issuance and renewal continue without a re-issue (TA-8).
 - **Window sizing.** The monitoring window covers at least one representative peak-traffic period, and it is never shorter than the maximum rollback time `[Max rollback time]`, so a rollback remains possible inside the window.
 - **Writes during the shift.** Data written while traffic is shifting is accounted for and reconciled, which is a P5 exit criterion. The measurable criterion is TA-9's equal-record-count rule (3.9), extended to the shift window: the reconciled record count equals the record count written to the target during the shift, every write made during the shift appears in the reconciliation, and any conflicting write is resolved by `[Conflict resolution rule]`. TA-2 produces that reconciliation — data integrity is the area P5 runs for writes during the shift — and its owner, the Data Engineer, records the written and reconciled counts the Cutover Manager signs the P5 exit against.
 
@@ -736,7 +765,7 @@ Role names only: no team or person name appears anywhere in this plan.
 | Role | Responsibility | Environments |
 |------|----------------|--------------|
 | Test Lead | Owns the plan, runs the gates, keeps the assumption list current, and signs phase exits with the owning role | All three environments, plus the external control surfaces when a gate is signed |
-| QA and Test Engineer | Executes functional, regression and integration checks, and records every result against its threshold | Source production (read-only), target non-production, target production during smoke steps |
+| QA / Test Engineer | Executes functional, regression and integration checks, and records every result against its threshold | Source production (read-only), target non-production, target production during smoke steps |
 | Application Owner | Confirms the critical journeys and admin functions; owns TA-1 and the hypercare exit, delegating TA-1 execution to the QA engineers | Source production, target non-production, target production |
 | Cloud Platform Engineer | Owns TA-8 and the target platform build; environment readiness and decommission readiness | Source production (read-only), target non-production, target production |
 | Data Engineer | Owns TA-2: replication, validation, reconciliation and restore tests | Source production (read-only), target non-production, target production |
@@ -776,11 +805,11 @@ Each dependency is a precondition the migration team satisfies later, and each h
 | Target cloud account with rights to create and configure the target estate | The target non-production and production environments, and the resources each test area inspects | Cloud Platform Engineer |
 | Network connectivity between the two clouds for data sync and replication | The parallel run, data migration validation and reconciliation | Cloud Platform Engineer, Data Engineer |
 | DNS control of the website's zones, including the ability to set record weights and TTLs | The traffic-shift steps, the cutover and the rollback | Cutover Manager |
-| Certificate issuance authority, including control of the DNS validation record | Certificate validity and renewal on the target | Cloud Platform Engineer |
+| Certificate issuance authority, including control of the DNS validation record and the ability to leave that record in place | Certificate validity and renewal on the target: renewal depends on the validation record being left in place, and a certificate attached to a CDN distribution must be issued in a region that distribution accepts | Cloud Platform Engineer |
 | Access to each third party whose allow-lists, callback, webhook or redirect URLs must change | Integration re-registration and its verification | Third-Party Integration Owner |
 | Read access to source production monitoring and configuration | Baseline capture; the source redirect, canonical, cache and certificate reference rule set; the security configuration inventory; the monitoring inventory; and post-cutover comparison | Test Lead, Security Engineer, SRE / Observability Engineer, Cloud Platform Engineer |
 | An approved load-testing window against source production | The performance baseline in TA-4 | Performance Engineer |
-| Approval to run controlled fault injection in production during hypercare | The production failover test in TA-6 | SRE |
+| Approval to run controlled fault injection in production during hypercare | The production failover test in TA-6 | SRE / Observability Engineer |
 | Backup and restore tooling, and the authority to restore into a clean environment | The measured RTO and RPO in TA-6 | Data Engineer |
 
 Two boundaries hold across all of them. Producing this plan creates no infrastructure and accesses no cloud
@@ -866,7 +895,7 @@ phase's exit criteria are signed off.
 | Downtime is minimal or none, and the permitted change window is `[Permitted cutover window]` | The rollback trigger set and the go/no-go timing depend on the window |
 | The hypercare duration is `[Hypercare duration]` | The hypercare exit criteria are measured against it |
 | The maximum rollback time is `[Max rollback time]` | It bounds both rollback rehearsals and the decision timebox |
-| Every other value left as a bracketed placeholder is to be agreed by the programme before the phase that first uses it | Each is a threshold or a window that a test area, a gate or a trigger depends on; none may be left unset, and none may be replaced by a figure invented without the website owner's agreement |
+| Every other value left as a bracketed placeholder is to be agreed by the programme before the phase that first uses it | Each is a threshold or a window that a test area, a gate or a trigger depends on; none may be left unset, and none may be replaced by a figure invented without the Application Owner's agreement |
 | The TTL is lowered to `[TTL value]` at least 24-48 hours before the window opens | Resolver caching makes the shift effective only after the previous TTL expires |
 | The source's current behaviour is the reference for functional, security and performance comparison | Without a captured baseline, TA-4 cannot report a result |
 | An anonymised production copy is available and permitted for use in the test environments | Data validation, regression and load comparison all depend on realistic data |
@@ -877,12 +906,12 @@ phase's exit criteria are signed off.
 
 ### 8.2 The bracketed placeholders to be agreed
 
-Each of the twenty-nine placeholders below is a value the programme has not yet supplied. Each appears in the
+Each of the thirty placeholders below is a value the programme has not yet supplied. Each appears in the
 plan only where it is needed, none is replaced by an invented figure, and each is agreed before the phase that
 first depends on it.
 
 - **Performance, capacity and data thresholds:** `[Agreed latency tolerance]`, `[Agreed error-rate tolerance]`, `[Max sustained utilisation]`, `[Max scaling events]`, `[Max scale-out time]`, `[Max replication lag at freeze]`, `[Stability window]`, `[Failover error tolerance]`, `[RTO target]`, `[RPO target]`.
-- **Cutover, DNS and TLS mechanics:** `[TTL value]`, `[TTL propagation window]`, `[Step monitoring window]`, `[Permitted cutover window]`, `[DNS failure threshold]`, `[Min certificate validity]`, `[Minimum TLS policy]`.
+- **Cutover, DNS and TLS mechanics:** `[TTL value]`, `[TTL propagation window]`, `[Step monitoring window]`, `[Permitted cutover window]`, `[DNS failure threshold]`, `[Min certificate validity]`, `[Minimum TLS policy]`, `[CDN certificate region]`.
 - **Operational windows and rollback thresholds** (including the incident-severity ages `[Max P1 open age]` and `[Max P2 open age]`): `[Alert delivery target]`, `[Max P1 open age]`, `[Max P2 open age]`, `[Rollback error rate]`, `[Rollback latency multiple]`, `[Rollback latency duration]`, `[Max rollback time]`, `[Decision timebox]`, `[Third-party fix window]`, `[Conflict resolution rule]`, `[Decommission observation window]`, `[Hypercare duration]`.
 
 Until a placeholder is agreed, the test area, gate or trigger that depends on it cannot be reported as passed.

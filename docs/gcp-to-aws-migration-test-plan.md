@@ -355,7 +355,7 @@ This plan creates no infrastructure, runs no test and opens no cloud account, so
 | A third party rejecting traffic or stale callbacks | Re-register allow-lists and callbacks before the step | TA-3 |
 | Performance regression or capacity shortfall | Baseline-then-compare on like scenarios | TA-4 |
 | Autoscaling too slow or unstable for a spike | Observe scale-out timing and oscillation | TA-4 |
-| Over-permissive identity, weak TLS, missing edge rule, plaintext secrets | Least privilege, handshakes, secret checks | TA-5 |
+| Over-permissive identity, an exposed network path, weak TLS, a missing edge rule, plaintext secrets or unencrypted data | Least-privilege review, segmentation checks, handshake tests, rule-parity review, secret-store and encryption verification, scanning | TA-5 |
 | Edge traffic reaching the target too early | Stage the DNS weight at zero; require a smoke pass | TA-8 |
 | A certificate or DNS failure, or stale caching | Lower the TTL ahead, validate per host | TA-8 |
 | SEO and URL regressions after the host change | Redirect, canonical, sitemap, `robots.txt` | TA-8 |

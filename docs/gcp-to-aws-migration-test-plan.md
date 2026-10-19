@@ -45,6 +45,8 @@ TA-1, TA-2 and TA-4 need an **anonymised production copy** at realistic volume a
 - **Edge security.** If the source has no edge firewall or DDoS protection today, this row is not a port but new configuration on the target. The difference is recorded as a gap with a named owner (7.2), and TA-5 and TA-8 then test the new configuration against its own stated behaviour rather than against source parity.
 - **Identity and secrets.** If the website has no end-user identity provider, this row reduces to workload and platform identity plus secret storage, and TA-3's assertions about post-move authentication then apply to internal service-to-service calls only; a row confirmed as not applying is still recorded as a gap with a named owner (7.2), never dropped.
 
+**The migration is like-for-like.** No re-architecting, no feature change, no service substitution beyond the mapped pair, no cost-driven redesign; where the target cannot reproduce a source behaviour exactly, the difference is a recorded finding with a decision, never licence to redesign the website.
+
 Where the target's configuration model differs, not only its defaults, the configuration is rebuild work, never a port: CDN configuration, cache policies and any edge code rebuilt, re-tested against the source's observed behaviour before cutover (TA-8).
 
 ### 1.5 Programme requirements

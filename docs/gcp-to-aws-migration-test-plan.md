@@ -102,7 +102,7 @@ Seven phases in order: none starts before the previous exit criteria are signed 
 **Exit:** dry-run complete, smoke set passing at every step; rollback rehearsed twice inside `[Max rollback time]`, each with post-shift writes; allow-list, callback and redirect URLs re-registered; go/no-go checklist walked and measurable; support rota named.
 
 **2.5 P5 Cutover** — Cutover Manager; types 2.8. **Entry:** P4 exit signed off; every go/no-go entry green; freeze in effect; TTL lowered; weight staged at zero; rota staffed.
-**Exit:** each step's smoke test passed, its window closed inside threshold, sign-off before the next step; 100% of traffic on the target; shift-window writes reconciled; triggers monitored, confirmed not breached.
+**Exit:** each step's smoke test passed, its window closed inside threshold, sign-off before the next step; 100% of traffic on the target; shift-window writes reconciled; the target observable and alerting at the new traffic level; triggers monitored, confirmed not breached.
 
 **2.6 P6 Post-cutover hypercare** — Application Owner; types 2.8. **Entry:** P5 exit signed off; traffic fully shifted.
 **Exit:** hypercare for `[Hypercare duration]`; no highest-severity incident beyond `[Max P1 open age]`, none major beyond `[Max P2 open age]`; latency and error in threshold; source receiving no writes; every open issue documented with an owner and a next action.
@@ -132,7 +132,7 @@ Nine areas, one per test type, five fields each: **objective, method, example ch
 ### 3.1 TA-1 Functional and regression
 
 - **Objective.** Journeys, admin functions, jobs, outbound messages, authentication and authorisation as on source.
-- **Method.** Baseline replay; admin actions as administrator, a non-privileged role attempting the same; same accounts and roles both sides — sign-in, session establishment, session lifetime, session renewal, sign-out; page-level tag firing, each page's analytics request, both hostnames; jobs by run logs.
+- **Method.** Baseline replay; admin actions as administrator, a non-privileged role attempting the same; same accounts and roles both sides — sign-in, session establishment, session lifetime, session renewal, sign-out; page-level tag firing, each page's analytics request, both hostnames; jobs by run logs; transactional email and webhooks verified by delivery to a test endpoint that records receipt, order and signature.
 - **Example checks.** Browse; login, sign-out; search; checkout; accounts; admin console; non-privileged denial; job output, run count; email; webhook signature; tag firing once per page view, expected identifiers on target hostnames, analytics request resolving there; invalid-request error page.
 - **Pass threshold.** 100% journeys at baseline; zero sign-in/session-establishment/lifetime/sign-out difference vs source; 100% role-based checks pass, non-privileged denial included; zero failed admin actions; zero duplicate or missing firings per page view; jobs once per schedule, no duplicates or missed runs; 100% emails and webhooks delivered, zero duplicate sends.
 - **Owner.** Application Owner; QA / Test Engineer.
@@ -156,8 +156,8 @@ Nine areas, one per test type, five fields each: **objective, method, example ch
 ### 3.4 TA-4 Performance and load
 
 - **Objective.** Baseline met under normal, peak, spike load; scaling observed.
-- **Method.** Identical source-then-target scenarios, same volume, journey mix, think times, durations.
-- **Example checks.** p50, p95, p99; error mix; throughput; scale-out; saturation; queue depth.
+- **Method.** Identical source-then-target scenarios, same volume, journey mix, think times, durations; the spike profile escalates abruptly to test the scaling reaction, and the run continues until the system returns to baseline.
+- **Example checks.** p50, p95, p99; error mix; throughput; scale-out; saturation; queue depth; behaviour after the spike passes, including scale-in.
 - **Pass threshold.** p95 within `[Agreed latency tolerance]`; error rate at baseline plus `[Agreed error-rate tolerance]`; throughput at least baseline; scale-outs inside `[Max scale-out time]`; saturation under `[Max sustained utilisation]`; `[Max scaling events]` per spike window.
 - **Owner.** Performance Engineer, with SRE / Observability Engineer.
 
@@ -172,8 +172,8 @@ Nine areas, one per test type, five fields each: **objective, method, example ch
 ### 3.6 TA-6 Resilience and failover
 
 - **Objective.** Zone and component failures survived; recovery measured, not assumed.
-- **Method.** Fault injection in target non-production, then production in hypercare: multi-zone, instance, database failover, timed; connection chain's idle behaviour — backend keepalive, load-balancer idle timeout, any network load balancer's own timeout, connection-tracking idle expiry.
-- **Example checks.** Failover and recovery times; error rate; long-lived connections, in-flight transactions across a failover; primary zone removal; target's point-in-time recovery window against source's, restore inside it; reported keepalive and timeout values; idle holds in three classes — short, medium, long against load-balancer timeout and backend keepalive — boundary each ends at.
+- **Method.** Fault injection in target non-production, then production in hypercare: multi-zone, instance or host failure and replacement, database failover, timed; a backup restored into a clean environment; connection chain's idle behaviour — backend keepalive, load-balancer idle timeout, any network load balancer's own timeout, connection-tracking idle expiry.
+- **Example checks.** Failover and recovery times; error rate; replacement of a failed instance and return to service; restore of a backup into a clean environment; long-lived connections, in-flight transactions across a failover; primary zone removal; target's point-in-time recovery window against source's, restore inside it; reported keepalive and timeout values; idle holds in three classes — short, medium, long against load-balancer timeout and backend keepalive — boundary each ends at.
 - **Pass threshold.** 100% failovers leave the site serving within `[RTO target]`, no data loss beyond `[RPO target]`, both met in two consecutive runs; zero manual intervention; error rate never above `[Failover error tolerance]`; target's recovery window at least source's, restore inside it landing at expected point; backend keepalive > load-balancer timeout > target timeout on 100% paths tested; each idle hold closed only at or after earliest boundary it crosses — zero connections dropped or reset before it, every re-established connection carrying its request, no user-visible error, no data loss; a path where target cannot reproduce source's ordering is a finding with a decision, never accepted silently.
 - **Owner.** SRE / Observability Engineer, with the Data Engineer.
 
@@ -181,8 +181,8 @@ Nine areas, one per test type, five fields each: **objective, method, example ch
 
 - **Objective.** Dashboard, alert and log inventory exists and fires before cutover.
 - **Method.** Inventory comparison against source dashboards, alerts and logs; fault injection proving each alert fires and routes; dashboard walkthrough by the on-call role.
-- **Example checks.** Alert equivalents with threshold and window; severity-1 alerts fire and notify; logs for application, access, edge, database and jobs; retention set; request correlation or tracing, sample transaction.
-- **Pass threshold.** 100% alerts proven to fire and route within `[Alert delivery target]`; retention explicitly set on every log destination; 100% go/no-go panels populated in rehearsal.
+- **Example checks.** Alert equivalents with threshold and window; severity-1 alerts fire and notify; logs for application, access, edge, database and jobs at the new traffic level; retention set; request correlation or tracing, sample transaction.
+- **Pass threshold.** 100% of the alerts on the agreed inventory created and proven to fire in a fault-injection test; 100% routed to a monitored destination within `[Alert delivery target]`; retention explicitly set on every log destination; 100% go/no-go panels populated in rehearsal.
 - **Owner.** SRE / Observability Engineer.
 
 ### 3.8 TA-8 DNS, TLS and CDN
@@ -261,7 +261,7 @@ Until then, the source stays live and in sync, 5.2's triggers remain in force, a
 
 ### 4.4 Downtime and the permitted change window
 
-Production downtime during cutover: assumed minimal or none. The change window — duration, time of day, any freeze — is `[Permitted cutover window]`: confirmed in P4 and a go/no-go entry at 5.1.
+Production downtime during cutover: assumed minimal or none. The change window — duration, time of day, any freeze — is `[Permitted cutover window]`: confirmed in P4, a go/no-go entry at 5.1, and an assumption at 8.1; the rollback triggers and the monitoring windows are sized against it, so it cannot be left unset.
 
 ## 5. Go/no-go checklist and rollback triggers
 
@@ -269,17 +269,17 @@ Production downtime during cutover: assumed minimal or none. The change window �
 
 Every entry measurable and green before the first step; the decision is a signed checklist line.
 
-1. P4 exit signed off; dry-run complete.
+1. P4 exit signed off; the dry-run cutover completed successfully in the production-like target environment.
 2. Source baseline captured; no journey without one.
 3. Data clean: zero count, checksum, hash mismatches; zero orphan rows; lag inside `[Max replication lag at freeze]`, stable for `[Stability window]`.
 4. Target smoke set (4.1) passing at zero DNS weight.
-5. Observability: every alert proven to fire; retention set on every log destination.
-6. Security: no unresolved critical or high findings; one rotation proven; encryption verified.
-7. Resilience: RTO and RPO at or below `[RTO target]`/`[RPO target]`.
-8. Integration: allow-list and callback re-registrations confirmed in writing.
+5. Observability: 100% of the alert inventory provisioned and proven to fire; retention set on every log destination.
+6. Security: zero unresolved critical or high findings; secrets held in the managed store with one rotation proven; encryption at rest and in transit verified.
+7. Resilience: measured RTO and RPO at or below `[RTO target]`/`[RPO target]` in rehearsal, in two consecutive runs.
+8. Integration: 100% of allow-list and callback re-registrations confirmed in writing by the Third-Party Integration Owner.
 9. Both rollback rehearsals inside `[Max rollback time]`, each with post-cutover writes.
-10. TTL lowered; target weight staged at zero.
-11. `[Permitted cutover window]` confirmed; freeze in effect; rota.
+10. TTL lowered and the previous TTL has expired; target weight staged at zero.
+11. `[Permitted cutover window]` confirmed; freeze in effect; support rota staffed for the hypercare duration `[Hypercare duration]`.
 
 ### 5.2 Rollback triggers
 
@@ -307,12 +307,12 @@ Role names only: no team or person name appears anywhere in this plan.
 
 | Role | Responsibility | Environments |
 |---|---|---|
-| Test Lead | Owns the plan and gates; signs phase exits | All three, plus control |
+| Test Lead | Owns the plan and gates; keeps the assumption list current; signs phase exits with the owner | All three, plus control |
 | QA / Test Engineer | Functional, regression and integration checks | Source (RO), non-prod, prod |
 | Application Owner | Journeys, admin functions; owns TA-1, hypercare | Source, non-prod, prod |
 | Cloud Platform Engineer | Owns TA-8, the platform build, decommission | Source (RO), non-prod, prod |
 | Data Engineer | Owns TA-2: replication, validation, reconciliation | Source (RO), non-prod, prod |
-| Performance Engineer | Owns TA-4: baseline capture, comparison | Source (approved load window), non-prod, prod |
+| Performance Engineer | Owns TA-4: baseline capture, comparison | Source (approved load window), non-prod, prod (passive observation during hypercare) |
 | Security Engineer | Owns TA-5: policy, network, TLS, edge | Source (RO config), non-prod, prod |
 | SRE / Observability Engineer | Owns TA-6 and TA-7: failover, alerts | Source (RO monitoring), non-prod, prod |
 | Third-Party Integration Owner | Owns TA-3: allow-list and callback re-registration | Non-prod, prod, consoles |
@@ -374,7 +374,7 @@ This plan creates no infrastructure, runs no test and opens no cloud account, so
 | TA-1 Functional and regression | Functional regression; missed jobs | Source (RO), non-prod, prod |
 | TA-2 Data integrity | Data loss or corruption; diverging data in the run | Source (RO), non-prod, prod |
 | TA-3 Integration | A third party rejecting traffic; stale callbacks | Non-prod, prod |
-| TA-4 Performance and load | Performance regression; capacity shortfall; unstable scaling | Source (approved load window), non-prod, prod |
+| TA-4 Performance and load | Performance regression; capacity shortfall; unstable scaling | Source (approved load window), non-prod, prod (passive observation during hypercare) |
 | TA-5 Security | Over-permissive identity; exposed path; weak TLS | Source (RO config), non-prod, prod |
 | TA-6 Resilience and failover | Zone, instance or database failure; unrestorable backups | Non-prod, prod |
 | TA-7 Observability | Operating blind without dashboards or alerts | Source (RO monitoring), non-prod, prod |

@@ -50,7 +50,7 @@ can be judged.
 
 | Level | Test types judged at this level | What the level proves |
 |-------|--------------------------------|-----------------------|
-| Smoke | A short cross-cutting set drawn from functional and regression, integration, and DNS/TLS/CDN checks | That the site a real user reaches is serving correctly: public pages and static assets, no certificate warning and no maintenance page, authentication, one revenue-critical action, and the integration handshakes |
+| Smoke | A short cross-cutting set drawn from functional and regression, integration, and DNS/TLS/CDN checks | That the site a real user reaches is serving correctly, in the eight checks 4.1 defines: public pages that return a success status with no certificate warning and no maintenance page; static assets; the title, canonical and `robots` metadata; `robots.txt` and the sitemap; authentication; one revenue-critical action; one read-only administrative action; and the integration handshakes of TA-3 |
 | Functional and regression (system level) | Functional and regression | That every critical user journey, administrative function, scheduled job and outbound message behaves on the target as it did on the source |
 | Provider-contract integration | Integration | That every third-party system accepts the target's traffic and that no allow-list, callback, webhook or redirect still points at the source |
 | System-level non-functional | Performance and load, security, resilience and failover, observability, DNS/TLS/CDN | That latency, capacity, security posture, failure behaviour, operability and naming behave on the target as required |
@@ -715,9 +715,9 @@ and once a trigger has fired the step or the cutover is reversed.
 | A data validation mismatch found after a traffic step has begun | Reverse the step: this is a rollback trigger. The source is still live and in sync, so it resumes as the system of record; re-sync and re-validate before the step is attempted again |
 | Error rate or latency beyond threshold during a traffic step, with no trigger fired | Pause the step inside its monitoring window, diagnose, and resume only once the breach has cleared; never advance to the next step on an unresolved breach |
 | Error rate or latency beyond threshold that has met a trigger — `[Rollback error rate]` across two consecutive monitoring windows, or p95 above `[Rollback latency multiple]` of the source baseline for `[Rollback latency duration]` | Reverse the step or the cutover; the pause path may not be used to sit on a breach that has already met a trigger |
-| Replication lag beyond `[Max replication lag at freeze]` at the freeze, before any traffic has moved | Postpone the cutover; do not advance, and do not accept a lagging target as the system of record |
+| Replication lag beyond `[Max replication lag at freeze]` at the freeze, before any traffic has moved | Postpone the cutover; do not advance, and do not accept a lagging target as the system of record. This is the postpone path and not a reversal, because no traffic has moved yet and there is no traffic step to reverse |
 | Replication lag beyond `[Max replication lag at freeze]` after a traffic step has begun | Reverse the step, then re-sync and re-validate before retrying |
-| A certificate or DNS failure | Roll the DNS weights back to the source, fix issuance or resolution, and re-enter the step from the beginning |
+| A certificate or DNS failure — a certificate invalid, expired or missing for any host, or resolution failing for more than `[DNS failure threshold]` of probes | Roll the DNS weights back to the source, fix issuance or resolution, and re-enter the step from the beginning. Resolution failing at or below `[DNS failure threshold]` of probes is observed and diagnosed inside the monitoring window rather than reversed: the step never advances while the condition persists, and the window may not close inside its thresholds |
 | A third party rejecting the target's traffic | Fix the allow-list or callback registration before the next traffic step; if the provider cannot be fixed inside `[Third-party fix window]`, reverse the step |
 
 **Ordinary.** The step passes, the smoke test and every monitoring threshold are inside their limits, and the
@@ -751,8 +751,18 @@ cross-cutting set of the smoke level in 1.1:
 - One read-only administrative action succeeds, and a non-privileged role is denied an administrative action.
 - The integration handshakes of TA-3 respond.
 
-A failed smoke check stops the step: the step does not open its monitoring window and does not advance, and the
-failure is handled by the decision and action in the failing-states table of 3.10.
+A failed smoke check stops the step: the step does not open its monitoring window and does not advance.
+Where the failed check is a certificate or DNS failure or the integration handshake — a third party
+rejecting the target's traffic — the matching row of 3.10 carries the decision and action: roll the DNS
+weights back to the source and fix issuance or resolution before re-entering the step, or fix the
+allow-list or callback registration before the next traffic step. Any other smoke failure — a static asset
+that does not load, incorrect title, canonical or `robots` metadata, a `robots.txt` or sitemap failure,
+broken authentication, or a failed read-only administrative action — has no row in that table and is
+treated as a functional defect at the cutover gate, exactly as 3.11 treats a duplicate or missed scheduled
+job; the smoke set is re-run only once TA-1 or TA-3 confirms the fix. Once the monitoring window is open,
+a breach of the error-rate or latency thresholds is handled by the error-rate and latency rows of 3.10,
+which pause the step inside the window, and any condition that has also met a rollback trigger (section 5)
+is reversed rather than paused.
 
 ### 4.2 Traffic-shift steps and monitoring windows
 
@@ -821,7 +831,7 @@ precedence over the pause-and-recover path in 3.10: a trigger that has fired is 
 1. A critical journey's error rate above `[Rollback error rate]` across two consecutive monitoring windows.
 2. p95 latency above `[Rollback latency multiple]` of the source baseline sustained for `[Rollback latency duration]`.
 3. Any data integrity mismatch discovered after the shift — a count, checksum, hash or orphan-row difference.
-4. Replication lag beyond `[Max replication lag at freeze]` at the point of freeze.
+4. Replication lag beyond `[Max replication lag at freeze]` at the point of freeze, once a traffic step has begun.
 5. A certificate invalid, expired or missing for any host, or resolution failing for more than `[DNS failure threshold]` of probes.
 6. A security incident attributable to the migration — an unintended exposure, a credential leak, or exploitation of a rule that should have blocked it.
 7. A third party rejecting the target's traffic and not fixable inside `[Third-party fix window]`.

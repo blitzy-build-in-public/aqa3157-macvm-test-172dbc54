@@ -73,15 +73,17 @@ the primary way back.
 | Step 4 | 100% | The smoke set runs, then the monitoring window of `[Step monitoring window]` | Reverse the DNS weights so the source serves all traffic again |
 | Hypercare | 100% to the target | Hypercare runs for `[Hypercare duration]`; the source stays live and in sync and the way back stays available | Reverse the DNS weights while the way back is still available; the source is still in sync |
 
-A stage advances only when the previous stage's monitoring window has closed inside every threshold and the
-stage sign-off has been recorded by the named owner; section 4 states the smoke set, the steps and the windows.
-Nothing in this plan advances on a verbal agreement.
+A traffic step advances only when its monitoring window has closed inside every threshold and the step's
+sign-off has been recorded by the named owner; the parallel run hands over to the first traffic step only when
+the go/no-go checklist in section 5 is green, and hypercare ends on the exit signals in 4.3. Section 4 states
+the smoke set, the steps and the windows. Nothing in this plan advances on a verbal agreement.
 
 Weighted records are relative, and every record in a weighted group shares one TTL, so a step is advanced by
-changing weights and never by editing addresses. A weight change is not fully effective until the previous TTL
-expires, so a period of mixed old and new traffic follows each step; that is expected, and it is tested rather
-than treated as an anomaly (TA-8). The TTL is lowered to `[TTL value]` at least 24-48 hours before the window
-opens, and each step waits out the previous TTL.
+changing weights and never by editing addresses. The TTL is lowered to `[TTL value]` at least 24-48 hours
+before the window opens, and the shift waits out the previous TTL before the first step. Each weight change
+then takes effect within `[TTL propagation window]` (TA-8), so a period of mixed old and new traffic follows
+every step; that is expected and tested rather than treated as an anomaly. These mechanics are stated once,
+here, and section 4 does not restate them.
 
 Downtime during cutover is assumed to be minimal or none, and the permitted change window — its duration, its
 time of day and any freeze it sits inside — is `[Permitted cutover window]`, to be confirmed before the go/no-go
@@ -643,9 +645,7 @@ and the step's sign-off is recorded by the named owner before the next step begi
 every threshold advances; a step that breaches a threshold is handled by section 3.10, and a breach that has met
 a rollback trigger reverses the step.
 
-- **Weight mechanics.** Weighted records are relative and every record in a weighted group shares one TTL, so a step is advanced by changing weights and never by editing addresses.
-- **TTL preparation.** The TTL is lowered to `[TTL value]` at least 24-48 hours before the window opens, and the shift waits out the previous TTL before the first step.
-- **Mixed traffic is expected.** Because resolvers cache for the previous TTL, a weight change is not fully effective until that TTL expires, so a period of mixed old and new traffic follows every step. That is expected behaviour, not an anomaly, and TA-8 tests for it: resolution is probed from multiple public resolvers and convergence is measured rather than assumed.
+- **Cutover mechanics.** The weight mechanics, the TTL preparation and the mixed-traffic behaviour the steps rely on are stated once in 1.2 and are not restated here.
 - **Window sizing.** The monitoring window covers at least one representative peak-traffic period, and it is never shorter than the maximum rollback time `[Max rollback time]`, so a rollback remains possible inside the window.
 - **Writes during the shift.** Data written while traffic is shifting is accounted for and reconciled, which is a P5 exit criterion and is tested by TA-2, TA-3 and TA-9.
 

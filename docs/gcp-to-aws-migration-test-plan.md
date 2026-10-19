@@ -338,7 +338,7 @@ Every row of the mapping table at 1.4 is covered by at least one test area.
 | Observability | TA-7 |
 | Edge security | TA-5, TA-8 |
 
-A row that does not apply is recorded as a gap with a named owner rather than dropped; until that gap has an owner the phase's exit criteria are not met.
+A row that does not apply is recorded as a gap with a named owner rather than dropped; 3.10 states the consequence of leaving a gap unowned.
 
 ## 8. Assumptions to confirm
 

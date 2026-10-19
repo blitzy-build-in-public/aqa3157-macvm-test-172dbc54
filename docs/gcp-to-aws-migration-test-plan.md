@@ -93,19 +93,19 @@ Seven phases in order: none starts before the previous exit criteria are signed 
 **Exit:** baselines (functional; performance normal, peak, spike); data profile (per-table row counts, checksums, object counts, hashes); inventory (identity, network, TLS, edge, secrets, encryption); dashboards, alerts and logs with thresholds; replication established, initial sync verified; journeys scripted or manual.
 
 **2.2 P2 Target environment validation** — Cloud Platform Engineer; types 2.8. **Entry:** P1 exit signed off; production-sized target built; test access; connectivity.
-**Exit:** smoke set served, no certificate warning or placeholder; every alert proven by fault injection; identity, segmentation, TLS, edge rules, secrets and encryption verified; failover rehearsed with measured RTO/RPO; backup restored; DNS verified; every gap with no source equivalent owned.
+**Exit:** smoke set served, no certificate warning or placeholder; every alert proven by fault injection; identity, segmentation, TLS, edge rules, secrets and encryption verified; resilience rehearsed in the target — multi-zone failover, instance and database failover, and backup and restore — with RTO and RPO measured; DNS and certificate readiness verified in non-production; every gap with no source equivalent owned.
 
 **2.3 P3 Data migration validation** — Data Engineer; types 2.8. **Entry:** P2 exit signed off; replication running; anonymised copy both sides.
-**Exit:** counts, checksums, schema and object counts match outside an accepted difference list; zero orphan rows; lag inside `[Max replication lag at freeze]` for `[Stability window]`; consistency mechanism proven; every mismatch resolved, or an accepted difference with a named owner.
+**Exit:** counts, checksums, schema, object counts and per-object hashes match outside an accepted difference list; zero orphan rows; lag inside `[Max replication lag at freeze]` on both the source and target sides for `[Stability window]`; consistency mechanism proven; every mismatch resolved, or an accepted difference with a named owner.
 
 **2.4 P4 Pre-cutover rehearsal** — Cutover Manager; types 2.8. **Entry:** P3 exit signed off; production-like target and runbook available; dry-run window agreed.
-**Exit:** dry-run complete, smoke set passing at every step; rollback rehearsed twice inside `[Max rollback time]`, each with post-shift writes; allow-list, callback and redirect URLs re-registered; go/no-go checklist walked and measurable; support rota named.
+**Exit:** dry-run complete, smoke set passing at every step; rollback rehearsed twice inside `[Max rollback time]`, each with post-shift writes; allow-list, callback and redirect URLs re-registered; go/no-go checklist walked and measurable; the permitted cutover window `[Permitted cutover window]` confirmed; the hypercare duration `[Hypercare duration]` agreed; support rota named.
 
 **2.5 P5 Cutover** — Cutover Manager; types 2.8. **Entry:** P4 exit signed off; every go/no-go entry green; freeze in effect; TTL lowered; weight staged at zero; rota staffed.
 **Exit:** each step's smoke test passed, its window closed inside threshold, sign-off before the next step; 100% of traffic on the target; shift-window writes reconciled; the target observable and alerting at the new traffic level; triggers monitored, confirmed not breached.
 
 **2.6 P6 Post-cutover hypercare** — Application Owner; types 2.8. **Entry:** P5 exit signed off; traffic fully shifted.
-**Exit:** hypercare for `[Hypercare duration]`; no highest-severity incident beyond `[Max P1 open age]`, none major beyond `[Max P2 open age]`; latency and error in threshold; source receiving no writes; every open issue documented with an owner and a next action.
+**Exit:** hypercare for `[Hypercare duration]` with issue volumes at or below the pre-cutover baseline; no highest-severity incident beyond `[Max P1 open age]`, none major beyond `[Max P2 open age]`; latency and error in threshold; the source receiving no production writes and the final reconciliation complete; every open issue documented with an owner and a next action.
 
 **2.7 P7 Source decommission readiness** — Cloud Platform Engineer; types 2.8. **Entry:** hypercare exit met, signed off by the Application Owner and the Cloud Platform Engineer.
 **Exit:** no production traffic to the source across `[Decommission observation window]`; reconciliation proving no source-only data or write conflicts; rollback decision closed.

@@ -422,12 +422,20 @@ through the write freeze.
 **Example checks.** Per-table row counts; per-table checksums or aggregate comparisons; definition-level
 comparison of tables, indexes, primary and unique constraints, sequences and triggers; child-to-parent
 anti-joins for orphan rows; object counts and per-object hashes per prefix; replication lag at the freeze;
-character-encoding and collation spot checks on non-ASCII and multi-byte content.
+character-encoding and collation spot checks on non-ASCII and multi-byte content; a definition-level
+comparison of the engines' settings and parameter groups, naming every setting that is immutable
+after instance creation, every setting that cannot be edited in the target's default parameter
+group, and every change that needs a restart to take effect, together with table-name and identifier
+case sensitivity.
 
 **Pass threshold.** Zero row-count mismatches; zero checksum mismatches; zero schema-definition differences
 outside the documented accepted list; zero orphan rows; zero object-count or hash mismatches; replication lag
 below `[Max replication lag at freeze]` on both sides and stable for at least `[Stability window]` before the
-freeze; record counts for every reconciled write equal to the record counts written during the parallel run.
+freeze; record counts for every reconciled write equal to the record counts written during the parallel run;
+zero unrecorded database-settings differences, with 100% of the immutable-after-creation,
+default-parameter-group and restart-required differences identified before P3 exits and either
+matched on the target or recorded as an accepted difference with a named owner, and zero table-name or
+identifier casing differences outside the documented accepted list.
 
 **Owner.** Data Engineer.
 
@@ -560,17 +568,38 @@ measured rather than assumed.
 **Method.** Controlled fault injection, first in the target non-production environment and then in production
 during hypercare: multi-availability-zone failover, instance or host failure and replacement, and database
 failover, with backup and restore into a clean environment. Each test is timed end to end, with the
-user-visible error rate captured throughout.
+user-visible error rate captured throughout, and the connection chain's idle behaviour is measured as
+well: the backend keepalive, the load balancer's idle timeout, the timeout of any network load balancer
+in the path, and the connection-tracking idle expiry.
 
 **Example checks.** Multi-zone failover time and the error rate observed during it; database failover time and
 connection recovery; replacement of a failed instance and return to service; restore of a backup into a clean
-environment; measured RTO and measured RPO; behaviour of long-lived connections and in-flight transactions
-across a failover; behaviour when the primary zone is deliberately removed from service.
+environment; measured RTO and measured RPO; the point-in-time recovery window achievable on the
+target and the equivalent window on the source, and a restore to a chosen point inside the target's
+window; behaviour of long-lived connections and in-flight transactions
+across a failover; behaviour when the primary zone is deliberately removed from service; the values
+actually reported for the backend keepalive, the load balancer's idle timeout and the target
+application's own timeout, together with the connection-tracking idle expiry; connection paths that
+include a network load balancer, whose own idle timeout is measured alongside the load balancer's; idle
+connections held in three classes — short (shorter than the load balancer's idle timeout), medium
+(between the load balancer's idle timeout and the backend keepalive) and long (longer than the backend
+keepalive) — with the idle boundary at which each hold ends and the connection is reused or
+re-established recorded.
 
 **Pass threshold.** 100% of failover tests complete with the website serving again within `[RTO target]` and no
-data loss beyond `[RPO target]`; measured RTO and RPO at or below those targets in two consecutive runs; zero
+data loss beyond `[RPO target]`; measured RTO and RPO at or below those targets in two consecutive runs; the
+point-in-time recovery window achievable on the target at least equal to the source's, with a
+restore to a point inside it landing at the expected point and zero data loss beyond the source's
+achievable recovery interval; zero
 manual intervention required in the failover path; error rate during failover never sustained above
-`[Failover error tolerance]` for longer than the failover itself.
+`[Failover error tolerance]` for longer than the failover itself; the reported values satisfy backend
+keepalive > load-balancer timeout > target timeout on 100% of the connection paths tested; each idle hold
+is closed only at or after the earliest idle boundary in the chain that it crosses — the target's own
+timeout first, then the load balancer's idle timeout, then the backend keepalive — so zero connections
+are dropped, reset or re-established before that boundary, and every connection re-established after an
+expected close carries its request successfully with zero user-visible errors and zero data loss; any path
+where the target cannot reproduce the source's ordering is recorded under section 1.5 as a finding with a
+decision rather than accepted silently.
 
 **Owner.** SRE / Observability Engineer, with the Data Engineer for database and restore tests.
 
@@ -702,7 +731,7 @@ agreement.
 | Long-lived sessions and cookies split between the two environments during the traffic shift | Session state is held outside the environment that serves the request, or load-balancer stickiness is used, so a user routed to either environment keeps their session. The test asserts that a signed-in user stays signed in across a weight change and that cookie domain and `SameSite` settings behave on both hostnames. A forced sign-out during a traffic step is a functional defect, not accepted behaviour. |
 | Cached DNS resolvers ignoring the lowered TTL | The TTL is lowered well before the window and the shift waits out the previous TTL. The source stays healthy for late-resolving clients, resolution is probed from multiple public resolvers, and the monitoring window is sized to the observed convergence rather than the planned one. Rollback does not depend on instant resolver convergence, so the way back stays reachable for at least the propagation window after a reversal. |
 | Data written to both environments at once during the parallel run | One write path is designated authoritative and the other environment receives that change, or dual writes are reconciled by a named rule. The chosen mechanism is named and proven before P3 exits: the reconciliation report that proves it is produced and signed off by the Data Engineer, as the recorded evidence for the P3 exit criterion that the consistency mechanism is named and proven (2.3); conflicts are resolved by `[Conflict resolution rule]` with a named owner; and the reconciled record count must equal the dual-written record count. |
-| Time-zone, character-encoding and collation differences between the source and target databases | Time-zone setting, character set and collation are compared explicitly for every database; the tests spot-check non-ASCII and multi-byte content, case sensitivity of lookups, sort order, and date and time rendering across a daylight-saving boundary and a time-zone offset. Any difference beyond the documented accepted list is treated as a data-integrity defect, not a cosmetic one. |
+| Time-zone, character-encoding and collation differences between the source and target databases | Time-zone setting, character set and collation are compared explicitly for every database; the tests spot-check non-ASCII and multi-byte content, case sensitivity of lookups, sort order, and date and time rendering across a daylight-saving boundary and a time-zone offset. Any difference beyond the documented accepted list is treated as a data-integrity defect, not a cosmetic one; settings that are immutable after instance creation and settings that cannot be edited in the target's default parameter group are compared explicitly, any change that needs a restart is identified and applied before the comparison runs, table-name casing is compared, and the target's point-in-time recovery window is compared with the source's, with a shorter window recorded as a gap with a named owner rather than accepted silently. |
 | Large uploads, signed URLs and CORS rules that depend on the storage domain | Signed-URL generation and consumption are tested from the target with lifetimes inside the provider's limit and after a key rotation; both environments cap a signed URL at seven days, so the differences that matter are the signing scope and the credential-limited paths inside the target's model; the largest supported upload is attempted end to end; CORS preflight and the origin allow-list are verified against the target storage hostname; the addressing style in use — virtual-hosted or path-style — is recorded and verified, and a bucket name containing a dot must be matched by the certificate presented for that name; object reads, writes and listings are judged against the target's documented consistency exceptions rather than retried until visible. A failure here halts the traffic step until it is fixed, because it is a failure of TA-3 as well as TA-8. |
 | Scheduled jobs that run twice, or not at all, during the switch | One environment owns each schedule and the other environment's schedules are disabled for the window; job-run logs are compared to prove every job ran exactly once per schedule with no missed run; any job with an external side effect is checked for idempotency; a duplicate or missed run is treated as a functional defect at the cutover gate. |
 

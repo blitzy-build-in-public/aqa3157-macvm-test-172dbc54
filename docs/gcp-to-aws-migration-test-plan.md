@@ -34,6 +34,9 @@ requirement. Every value the programme has not yet agreed appears as a bracketed
 
 **Identifiers.** Migration phases are `P1` to `P7`; test areas are `TA-1` to `TA-9`. A phase or an area keeps the
 same identifier in every section, block and table that refers to it.
+Incident severities are written out in full rather than abbreviated — as highest-severity and major-severity in
+2.6 and 4.3 — so `[Max P1 open age]` and `[Max P2 open age]` are incident-severity placeholders, not phase
+identifiers.
 
 **Scope in one line.** A like-for-like move of one website, tested in seven gated phases and nine test areas,
 with a parallel run and a progressive weighted traffic shift, and a rehearsed way back to the source.
@@ -369,7 +372,8 @@ Every test type this plan covers appears in at least one phase above.
 
 Nine test areas cover the nine test types. Each is stated in the same five fields in the same order —
 **objective, method, example checks, pass threshold, owner** — so any two areas can be compared at a glance.
-Which phases an area runs in is stated once, in the test-types table at 2.8, and is not repeated here.
+Which test types run in which phase is stated once, in the test-types table at 2.8, and is not restated here.
+Where a block below names a phase, it places the check that block describes, not that phase's test-type set.
 
 ### 3.1 TA-1 Functional and regression
 
@@ -879,7 +883,7 @@ first depends on it.
 
 - **Performance, capacity and data thresholds:** `[Agreed latency tolerance]`, `[Agreed error-rate tolerance]`, `[Max sustained utilisation]`, `[Max scaling events]`, `[Max scale-out time]`, `[Max replication lag at freeze]`, `[Stability window]`, `[Failover error tolerance]`, `[RTO target]`, `[RPO target]`.
 - **Cutover, DNS and TLS mechanics:** `[TTL value]`, `[TTL propagation window]`, `[Step monitoring window]`, `[Permitted cutover window]`, `[DNS failure threshold]`, `[Min certificate validity]`, `[Minimum TLS policy]`.
-- **Operational windows and rollback thresholds:** `[Alert delivery target]`, `[Max P1 open age]`, `[Max P2 open age]`, `[Rollback error rate]`, `[Rollback latency multiple]`, `[Rollback latency duration]`, `[Max rollback time]`, `[Decision timebox]`, `[Third-party fix window]`, `[Conflict resolution rule]`, `[Decommission observation window]`, `[Hypercare duration]`.
+- **Operational windows and rollback thresholds** (including the incident-severity ages `[Max P1 open age]` and `[Max P2 open age]`): `[Alert delivery target]`, `[Max P1 open age]`, `[Max P2 open age]`, `[Rollback error rate]`, `[Rollback latency multiple]`, `[Rollback latency duration]`, `[Max rollback time]`, `[Decision timebox]`, `[Third-party fix window]`, `[Conflict resolution rule]`, `[Decommission observation window]`, `[Hypercare duration]`.
 
 Until a placeholder is agreed, the test area, gate or trigger that depends on it cannot be reported as passed.
 

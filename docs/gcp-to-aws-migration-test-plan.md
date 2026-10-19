@@ -477,6 +477,8 @@ introduced by the move.
 **Method.** Policy and effective-permission review; configuration inspection; active TLS handshake testing;
 dependency and image vulnerability scanning; runtime web scanning; secrets and encryption verification; and
 negative tests for paths that must not work.
+Identity policy is walked policy by policy, mapping each source policy statement to its target equivalent, and
+the ported edge rules are staged in a non-blocking or count-only mode before any rule is enforced.
 
 **Example checks.** Least-privilege review of every role and principal against the functions it serves, with no
 wildcard permissions on production resources; network segmentation, with no internet path to a service except
@@ -486,6 +488,17 @@ configuration and images and readable only by the intended identity, with a rota
 encryption at rest and in transit for database, object storage and backups; vulnerability scan of images and
 dependencies; administrative access path review, including multi-factor enforcement where the source enforced
 it.
+A policy-by-policy walkthrough of every identity policy maps each source policy statement to its target
+equivalent and names the explicit deny precedence, organisation-level guardrail, permission boundary and trust
+policy differences it carries, together with the additive bindings, deny policies, inheritance and impersonation
+the target side brings, so every difference that changes effective access is asserted manually against recorded
+evidence with the Security Engineer as the named owner; the account-boundary case exercises a principal whose
+source access came from a folder- or organisation-level grant on the target to prove the same effective access
+survives the boundary, with any lost grant named and replaced or else recorded as a gap with a named owner;
+the ported edge rules run in a count-only or non-blocking mode first, and their match records are compared with
+the source's observed behaviour before any rule is enforced; and the six named rule attributes are compared
+one by one — managed rule sets, request-body inspection limits, the handling of over-long query strings,
+rate-based rule thresholds, ban windows and attachment points.
 
 **Pass threshold.** Zero wildcard or over-privileged grants on production resources; 100% of unintended
 internet-reachable ports closed in the tested range; 100% of TLS 1.0 and 1.1 handshakes rejected and no cipher
@@ -493,6 +506,16 @@ below `[Minimum TLS policy]` accepted; zero unresolved critical or high findings
 medium finding recorded with an owner and a remediation date; 100% of secrets held in the managed secret store
 with one successful rotation proven; 100% of in-scope data stores proven encrypted at rest and in transit; edge
 firewall rule coverage at least equal to the source, rule for rule.
+100% of role, principal and trust policies walked and mapped to a target equivalent, with zero principals left
+without a documented equivalent; every principal's effective permission set equal to its source effective set
+for the same function, with zero principals holding access the source did not grant and zero source-effective
+permissions lost; zero folder- or organisation-level grants unaccounted for at the account boundary, each
+reproduced on the target or recorded as a gap with a named owner;
+100% of ported edge rules run in a non-blocking or count-only mode first, with their match records compared
+against the source's observed behaviour before enforcement and zero rules moved to blocking with an unexplained
+difference; every one of the six named attributes listed with its source and target value, or with the behaviour
+the target's own configuration is asserted against where the source has no counterpart, with zero differences
+unaccounted for and none settled by a target default chosen by assumption.
 
 **Owner.** Security Engineer.
 

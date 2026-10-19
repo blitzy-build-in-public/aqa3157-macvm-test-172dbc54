@@ -563,7 +563,10 @@ written to the target after cutover.
 **Method.** Two rehearsals, both in P4 and both in the target non-production environment sized like production:
 the first reverses the target before the dry run, and the second reverses a simulated traffic shift inside the
 dry-run cutover. Each includes at least one write to the target after the shift, is timed end to end, and
-reconciles those writes back into the source by the stated procedure.
+reconciles those writes back into the source by the procedure stated at 3.11 — the named
+write-consistency mechanism, the reconciliation report that evidences the reconciled record
+count, and conflicts resolved by `[Conflict resolution rule]` under its named owner —
+executed by the Data Engineer within the rehearsal the Cutover Manager owns.
 
 **Example checks.** Reverse the DNS weights and confirm traffic returns to the source; confirm the target's
 post-cutover writes are captured and reconciled or replayed; exercise the rollback trigger list against a
@@ -610,7 +613,7 @@ agreement.
 |-----------|------------------|
 | Long-lived sessions and cookies split between the two environments during the traffic shift | Session state is held outside the environment that serves the request, or load-balancer stickiness is used, so a user routed to either environment keeps their session. The test asserts that a signed-in user stays signed in across a weight change and that cookie domain and `SameSite` settings behave on both hostnames. A forced sign-out during a traffic step is a functional defect, not accepted behaviour. |
 | Cached DNS resolvers ignoring the lowered TTL | The TTL is lowered well before the window and the shift waits out the previous TTL. The source stays healthy for late-resolving clients, resolution is probed from multiple public resolvers, and the monitoring window is sized to the observed convergence rather than the planned one. Rollback does not depend on instant resolver convergence, so the way back stays reachable for at least the propagation window after a reversal. |
-| Data written to both environments at once during the parallel run | One write path is designated authoritative and the other environment receives that change, or dual writes are reconciled by a named rule. The chosen mechanism is named and proven before P3 exits; a reconciliation report is a P3 exit artefact; conflicts are resolved by `[Conflict resolution rule]` with a named owner; and the reconciled record count must equal the dual-written record count. |
+| Data written to both environments at once during the parallel run | One write path is designated authoritative and the other environment receives that change, or dual writes are reconciled by a named rule. The chosen mechanism is named and proven before P3 exits: the reconciliation report that proves it is produced and signed off by the Data Engineer, as the recorded evidence for the P3 exit criterion that the consistency mechanism is named and proven (2.3); conflicts are resolved by `[Conflict resolution rule]` with a named owner; and the reconciled record count must equal the dual-written record count. |
 | Time-zone, character-encoding and collation differences between the source and target databases | Time-zone setting, character set and collation are compared explicitly for every database; the tests spot-check non-ASCII and multi-byte content, case sensitivity of lookups, sort order, and date and time rendering across a daylight-saving boundary and a time-zone offset. Any difference beyond the documented accepted list is treated as a data-integrity defect, not a cosmetic one. |
 | Large uploads, signed URLs and CORS rules that depend on the storage domain | Signed-URL generation and consumption are tested from the target with lifetimes inside the provider's limit and after a key rotation; the largest supported upload is attempted end to end; CORS preflight and the origin allow-list are verified against the target storage hostname. A failure here halts the traffic step until it is fixed, because it is a failure of TA-3 as well as TA-8. |
 | Scheduled jobs that run twice, or not at all, during the switch | One environment owns each schedule and the other environment's schedules are disabled for the window; job-run logs are compared to prove every job ran exactly once per schedule with no missed run; any job with an external side effect is checked for idempotency; a duplicate or missed run is treated as a functional defect at the cutover gate. |
@@ -647,7 +650,7 @@ a rollback trigger reverses the step.
 
 - **Cutover mechanics.** The weight mechanics, the TTL preparation and the mixed-traffic behaviour the steps rely on are stated once in 1.2 and are not restated here.
 - **Window sizing.** The monitoring window covers at least one representative peak-traffic period, and it is never shorter than the maximum rollback time `[Max rollback time]`, so a rollback remains possible inside the window.
-- **Writes during the shift.** Data written while traffic is shifting is accounted for and reconciled, which is a P5 exit criterion and is tested by TA-2, TA-3 and TA-9.
+- **Writes during the shift.** Data written while traffic is shifting is accounted for and reconciled, which is a P5 exit criterion. The measurable criterion is TA-9's equal-record-count rule (3.9), extended to the shift window: the reconciled record count equals the record count written to the target during the shift, every write made during the shift appears in the reconciliation, and any conflicting write is resolved by `[Conflict resolution rule]`. TA-2 produces that reconciliation — data integrity is the area P5 runs for writes during the shift — and its owner, the Data Engineer, records the written and reconciled counts the Cutover Manager signs the P5 exit against.
 
 ### 4.3 Hypercare
 

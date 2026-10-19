@@ -432,7 +432,7 @@ Each of the twenty-nine placeholders below is a value the programme has not yet 
 - **Thresholds:** `[Agreed latency tolerance]`, `[Agreed error-rate tolerance]`, `[Max sustained utilisation]`, `[Max scaling events]`, `[Max scale-out time]`,
 `[Max replication lag at freeze]`, `[Stability window]`, `[Failover error tolerance]`, `[RTO target]`, `[RPO target]`.
 - **Cutover, DNS and TLS mechanics:** `[TTL value]`, `[TTL propagation window]`, `[Step monitoring window]`, `[Permitted cutover window]`, `[DNS failure threshold]`, `[Min certificate validity]`, `[Minimum TLS policy]`.
-- **Operational windows and rollback thresholds** (including the incident-severity ages `[Max P1 open age]` and `[Max P2 open age]`): `[Alert delivery target]`, `[Max P1 open age]`, `[Max P2 open age]`, `[Rollback error rate]`, `[Rollback latency multiple]`, `[Rollback latency duration]`,
+- **Operational windows and rollback thresholds** (including the two incident-severity ages): `[Alert delivery target]`, `[Max P1 open age]`, `[Max P2 open age]`, `[Rollback error rate]`, `[Rollback latency multiple]`, `[Rollback latency duration]`,
 `[Max rollback time]`, `[Decision timebox]`, `[Third-party fix window]`, `[Conflict resolution rule]`, `[Decommission observation window]`, `[Hypercare duration]`.
 
 Until a placeholder is agreed, the test area, gate or trigger that depends on it cannot be reported as passed.

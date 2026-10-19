@@ -126,7 +126,7 @@ checked in section 7. Two rows are flagged here because their applicability chan
 prove:
 
 - **Edge security.** If the source has no edge firewall or DDoS protection today, this row is not a port but new configuration on the target. The difference is recorded as a gap with a named owner, and TA-5 and TA-8 then test the new configuration against its own stated behaviour instead of against source parity.
-- **Identity and secrets.** If the website has no end-user identity provider, this row reduces to workload and platform identity plus secret storage, and the post-move authentication assertions in TA-3 cover internal service-to-service calls only.
+- **Identity and secrets.** If the website has no end-user identity provider, this row reduces to workload and platform identity plus secret storage, and the post-move authentication assertions in TA-3 then cover internal service-to-service calls only.
 
 ### 1.5 Like-for-like
 
@@ -384,18 +384,28 @@ Where a block below names a phase, it places the check that block describes, not
 behaves on the target as it did on the source.
 
 **Method.** Scripted browser journeys and API checks executed against the source to capture the baseline and
-then against the target, replaying the same steps; administrative actions performed by an administrator role;
-scheduled jobs verified by their outputs and run logs; transactional email and webhooks verified by delivery to
-a test endpoint that records receipt, order and signature.
+then against the target, replaying the same steps; administrative actions performed by an administrator role,
+and a non-privileged role attempting the same action; authentication exercised with the same accounts and roles
+on both sides, covering sign-in, session establishment, session lifetime, session renewal and sign-out;
+page-level tag firing and the analytics requests each page issues observed on both hostnames; scheduled jobs
+verified by their outputs and run logs; transactional email and webhooks verified by delivery to a test endpoint
+that records receipt, order and signature.
 
-**Example checks.** Browse; login and sign-out; search; checkout or form submission; account management; admin
-console actions; scheduled job output and job-run count; transactional email delivery; webhook receipt with
-signature validation; error-page behaviour for a deliberately invalid request.
+**Example checks.** Browse; search; login and sign-out, with session establishment, session lifetime and session
+renewal compared with the source; checkout or form submission; account management; admin console actions; a
+non-privileged role denied an administrative action; page-level tag firing once per page view with the expected
+identifiers on the target hostnames, with the analytics request the page issues resolving against them;
+scheduled job output and job-run count; transactional email delivery; webhook receipt with signature validation;
+error-page behaviour for a deliberately invalid request.
 
 **Pass threshold.** 100% of scripted critical journeys pass on the target with responses equivalent to the
-source baseline; zero failed administrative actions; every scheduled job produces its expected output exactly
-once per schedule, with zero duplicates and zero missed runs; 100% of test emails and webhooks delivered and
-acknowledged, with zero duplicate sends.
+source baseline; zero differences from the source baseline in sign-in, session establishment, session lifetime
+or sign-out behaviour; 100% of role-based access checks pass, including the negative case in which a
+non-privileged role is denied an administrative action; zero failed administrative actions; every page view
+fires its expected tags exactly once with the expected identifiers on the target hostnames, with zero duplicate
+or missing firings; every scheduled job produces its expected output exactly once per schedule, with zero
+duplicates and zero missed runs; 100% of test emails and webhooks delivered and acknowledged, with zero
+duplicate sends.
 
 **Owner.** Application Owner, executed by QA engineers.
 
@@ -426,24 +436,47 @@ freeze; record counts for every reconciled write equal to the record counts writ
 **Objective.** Prove every third-party system accepts traffic from the target, and that no allow-list entry,
 callback, webhook or redirect still points at the source.
 
-**Method.** Contract-level checks against each provider from the target's egress addresses such as third-party
-APIs, payment, email and identity providers; verification of each re-registration against the target hostnames;
-payload and response-code comparison between the source and the target calls; negative tests that retired
-source addresses and old callback URLs are genuinely no longer accepted or called; confirmation that the IP
-allow-lists and callback URLs which change with the new target egress addresses have been re-registered.
+**Method.** Contract-level checks from the target's egress addresses against each provider — third-party APIs,
+payment, email and identity providers, and analytics and tag managers —; verification of each re-registration
+against the target hostnames; payload and response-code comparison between the source and the target calls,
+with the source side replayed from the source baseline captured in P1 rather than by new traffic to source
+production; negative tests that retired source addresses and old callback URLs are genuinely no longer accepted
+or called; confirmation that the IP allow-lists and callback URLs which change with the new target egress
+addresses have been re-registered. Two behaviours are asserted rather than assumed after the move.
+**Authentication and authorisation:** sign-in, session establishment, session lifetime, sign-out and role-based
+access behave on the target as they do on the source, including for administrative users, and the checks and
+thresholds for them are the authentication checks of TA-1. **Data exchange:** each integration's requests are
+accepted from the target's egress addresses, each callback, webhook or redirect the third party calls resolves
+against the target hostnames, and the payload shape and response codes are unchanged. Whether a callback still
+arrives at the source is read from each provider's own delivery logs, so the source side of every comparison
+here is the P1 baseline and this area writes nothing to a source environment.
 
 **Example checks.** Identity provider assertion and callback; payment authorisation and confirmation in the
 provider's test mode; outbound email sending and bounce handling; webhook receipt and signature; analytics event
-ingestion; a retired source-address allow-list entry tested to confirm removal; an old callback URL tested to
-confirm it is no longer registered; the storage hostname a third party calls back to (an upload callback or a
-signed-URL redirect) resolves to the target and presents a certificate matching that name.
+ingestion from the target hostnames; the analytics and tag-manager consent state, cookie domain and cross-domain
+settings resolved against the target hostnames, with the collection endpoint seeing requests from them; a
+retired source-address allow-list entry tested to confirm removal; an old callback URL tested to confirm it is
+no longer registered; the storage hostname a third party calls back to (an upload callback or a signed-URL
+redirect) resolves to the target and presents a certificate matching that name; each provider's delivery logs
+read to confirm no callback still arrives at the source.
 
 **Pass threshold.** 100% of integration endpoints reachable and functional from the target; zero provider
 rejections attributable to a source address; 100% of callback, webhook and redirect registrations verified
 against the target hostnames; zero residual source-address allow-list entries; zero callbacks recorded arriving
-at the source after the final traffic step.
+at the source after the final traffic step; zero consent, cookie-domain or cross-domain defects in the analytics
+and tag-manager configuration, with 100% of tag and collection requests resolving against the target hostnames.
 
 **Owner.** Third-Party Integration Owner, with a Cloud Platform Engineer for the network path.
+
+The integration points this area covers, and what changes at cutover for each:
+
+| Third party | What changes at cutover | Test area covering it |
+|-------------|------------------------|-----------------------|
+| Identity provider, where the website federates sign-in | Redirect or callback URLs registered against the source hostname; the identity assertion path after the traffic step | TA-3, with the post-move sign-in journey asserted in TA-1 |
+| Payment provider | Source-address allow-lists; webhook callback URLs; the payment confirmation path end to end | TA-3, exercised through the checkout or payment journey in TA-1 |
+| Email or notification provider | Source-address allow-lists for sending; bounce and webhook callback URLs | TA-3, with outbound email and webhook delivery asserted in TA-1 |
+| Analytics and tag managers | Consent, cookie-domain and cross-domain configuration; the collection endpoint's view of the new hostnames | TA-3, with page-level tag firing asserted in TA-1 |
+| Any other external API | Source-address allow-lists and any callback or redirect registration | TA-3 |
 
 ### 3.4 TA-4 Performance and load
 
@@ -680,13 +713,13 @@ agreement.
 Every traffic step runs the same smoke set before its monitoring window opens. The smoke set is the short
 cross-cutting set of the smoke level in 1.1:
 
-- The homepage and a sample of public pages return a success status, with no certificate warning and no maintenance page.
+- The homepage and a sample of public pages return a success status, with no certificate warning and no maintenance page, and with each page's analytics tags firing once against the target hostnames.
 - Static assets load.
 - One revenue-critical action completes end to end.
 - The title, canonical and `robots` metadata are correct.
 - `robots.txt` and the sitemap respond correctly.
-- Authentication works.
-- One read-only administrative action succeeds.
+- Authentication works: sign-in, session establishment and sign-out behave as on the source, and a signed-in session survives the step.
+- One read-only administrative action succeeds, and a non-privileged role is denied an administrative action.
 - The integration handshakes of TA-3 respond.
 
 A failed smoke check stops the step: the step does not open its monitoring window and does not advance, and the

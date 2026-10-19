@@ -3,9 +3,6 @@
 ## About this plan
 
 **What it is.** A GCP-to-AWS move losing no data, functionality, security posture or performance: what is tested, when, by whom, against which threshold, when to roll back.
-**Altitude.** Documentation only: no test run, infrastructure or cloud account; approach level, one sitting's read; role names only; no uninvited brand, date, person or team.
-**Runbook.** Referenced, never replaced; unagreed values stay bracketed (`[Hypercare duration]`), listed at 8.2.
-**Identifiers.** `P1`-`P7` phases, `TA-1`-`TA-9` areas, one meaning each; severities written out (`highest-severity`, `major-severity`), never phase ids; `[Max P1 open age]`/`[Max P2 open age]` are ages.
 
 ## 1. Strategy and approach
 
@@ -25,7 +22,7 @@ A step advances only once its monitoring window has closed inside every threshol
 | Steps 1-4 | 1%, 10%, 50%, 100% | Smoke set (4.1), `[Step monitoring window]` | Reverse the weights; source serves all |
 | Hypercare | 100% to target | `[Hypercare duration]`; source live and in sync, way back available | Reverse while the way back holds |
 
-Weighted records relative; one TTL per group; a step advances by weight change, never address edits; TTL to `[TTL value]` 24-48 hours ahead, the shift waiting out the previous TTL before the first step, each change effective inside `[TTL propagation window]`; mixed traffic per step expected and tested, never an anomaly (TA-8). Stated once here; section 4 does not restate it.
+Weighted records relative; one TTL per group; a step advances by weight change, never address edits; TTL to `[TTL value]` 24-48 hours ahead, the shift waiting out the previous TTL before the first step, each change effective inside `[TTL propagation window]`; mixed traffic per step expected and tested, never an anomaly (TA-8).
 
 ### 1.3 Test data
 
@@ -84,7 +81,7 @@ No category proves identity-policy equivalence, allow-list re-registration, data
 
 **Walkthrough against the nine success criteria:** per phase owner, entry and exit criteria, test types; a threshold per area; measurable gates and triggers; rollback covering writes inside `[Max rollback time]`; a decision and action per failure state; every mapping row covered; two-way traceability; altitude; assumptions marked.
 **Two traceability checks:** 6.4 against every area, 1.4 against the areas, no orphan (7.1, 7.2). **The threshold check:** every pass threshold, go/no-go entry and rollback trigger objectively checkable per 1.6 — none on "looks fine".
-**The altitude check:** approach level for a single sitting, detail in tables; held to the roughly five-to-ten-page guide, which the mandated inventory runs past — the content kept whole rather than cut to the guide; no procedures, test cases, scripts or code; no brand, date, person or team the user did not supply.
+**The altitude check:** approach level for a single sitting, detail in tables; no procedures, test cases, scripts or code; no brand, date, person or team the user did not supply.
 
 ## 2. Phase-by-phase test activities
 
@@ -344,7 +341,7 @@ Two external control surfaces, recorded as control surfaces, never environments:
 | Approval for fault injection in production | The TA-6 failover | SRE / Observability Engineer |
 | Backup and restore tooling, restore authority | The measured RTO and RPO in TA-6 | Data Engineer |
 
-This plan creates no infrastructure and opens no cloud account, so every dependency is a precondition satisfied later; and no dependency may be satisfied by putting live customer personal data in non-production (1.3).
+This plan creates no infrastructure, runs no test and opens no cloud account, so every dependency is a precondition satisfied later; and no dependency may be satisfied by putting live customer personal data in non-production (1.3).
 
 ### 6.4 Risk register and mitigations
 

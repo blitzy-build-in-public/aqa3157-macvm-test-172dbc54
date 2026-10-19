@@ -42,6 +42,7 @@ TA-1, TA-2 and TA-4 need an **anonymised production copy** at realistic volume a
 | Edge security | Cloud Armor | AWS WAF, Shield |
 
 **Undescribed stack.** The mapping is tested, not re-decided: because the stack is unknown, no row can be excluded outright and every row is an assumption to confirm (8.1), covered at 7.2. Two rows are flagged here because their applicability changes what a test area has to prove:
+
 - **Edge security.** If the source has no edge firewall or DDoS protection today, this row is not a port but new configuration on the target. The difference is recorded as a gap with a named owner (7.2), and TA-5 and TA-8 then test the new configuration against its own stated behaviour rather than against source parity.
 - **Identity and secrets.** If the website has no end-user identity provider, this row reduces to workload and platform identity plus secret storage, and TA-3's assertions about post-move authentication then apply to internal service-to-service calls only; a row confirmed as not applying is still recorded as a gap with a named owner (7.2), never dropped.
 
